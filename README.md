@@ -1,280 +1,294 @@
-# Claude Code Source Snapshot for Security Research
+# Claude Code 源码快照
 
-> This repository mirrors a **publicly exposed Claude Code source snapshot** that became accessible on **March 31, 2026** through a source map exposure in the npm distribution. It is maintained for **educational, defensive security research, and software supply-chain analysis**.
-
----
-
-## Research Context
-
-This repository is maintained by a **university student** studying:
-
-- software supply-chain exposure and build artifact leaks
-- secure software engineering practices
-- agentic developer tooling architecture
-- defensive analysis of real-world CLI systems
-
-This archive is intended to support:
-
-- educational study
-- security research practice
-- architecture review
-- discussion of packaging and release-process failures
-
-It does **not** claim ownership of the original code, and it should not be interpreted as an official Anthropic repository.
+> 本仓库保存的是一份通过 npm 分发产物中的 source map 暴露出来的 Claude Code `src/` 源码快照，仅用于安全研究、供应链分析、架构学习与教学讨论。
 
 ---
 
-## How the Public Snapshot Became Accessible
+## 这是什么
 
-[Chaofan Shou (@Fried_rice)](https://x.com/Fried_rice) publicly noted that Claude Code source material was reachable through a `.map` file exposed in the npm package:
+这不是 Anthropic 官方开源仓库，而是一份基于公开可访问构建产物整理出的源码镜像。
 
-> **"Claude code source code has been leaked via a map file in their npm registry!"**
->
-> — [@Fried_rice, March 31, 2026](https://x.com/Fried_rice/status/2038894956459290963)
+- 暴露时间：`2026-03-31`
+- 主要内容：Claude Code CLI 的 `src/` 源码快照
+- 技术栈：TypeScript + Bun + React + Ink
+- 仓库定位：安全研究 / 架构考古 / Agent CLI 设计参考
 
-The published source map referenced unobfuscated TypeScript sources hosted in Anthropic's R2 storage bucket, which made the `src/` snapshot publicly downloadable.
+Claude Code 本质上是一个面向软件工程任务的终端 Agent：
 
----
+- 能读写文件
+- 能执行 Shell
+- 能搜索代码库
+- 能调工具 / MCP / LSP
+- 能跑子代理、技能、计划模式、远程桥接
 
-## Repository Scope
-
-Claude Code is Anthropic's CLI for interacting with Claude from the terminal to perform software engineering tasks such as editing files, running commands, searching codebases, and coordinating workflows.
-
-This repository contains a mirrored `src/` snapshot for research and analysis.
-
-- **Public exposure identified on**: 2026-03-31
-- **Language**: TypeScript
-- **Runtime**: Bun
-- **Terminal UI**: React + [Ink](https://github.com/vadimdemedes/ink)
-- **Scale**: ~1,900 files, 512,000+ lines of code
+如果你想研究“现代 Agent CLI 到底怎么组织起来”，这个仓库是很高价值的样本。
 
 ---
 
-## Directory Structure
+## 背景说明
+
+2026-03-31，公开分发的 npm 产物中存在 source map 暴露问题，进一步指向了可直接下载的 TypeScript 源码文件，因此这份 `src/` 快照在公网可访问。
+
+公开讨论可参考：
+
+- [Chaofan Shou (@Fried_rice)](https://x.com/Fried_rice/status/2038894956459290963)
+
+本仓库的维护目标是：
+
+- 研究构建产物泄露带来的供应链风险
+- 学习成熟 Agent CLI 的模块拆分方式
+- 分析权限系统、工具系统、上下文系统的实现思路
+- 给安全研究、终端产品、AI 编程工具设计提供真实样本
+
+---
+
+## 仓库边界
+
+本仓库不声称拥有原始代码版权，也不应被理解为官方发布渠道。
+
+请把它理解为一份研究样本，而不是官方 SDK 或正式发行版源码仓库。
+
+适合的用途：
+
+- 安全研究
+- 架构分析
+- 教学演示
+- 终端 Agent 设计参考
+- 供应链与发布流程复盘
+
+不适合的用途：
+
+- 伪装成官方仓库对外分发
+- 混淆版权归属
+- 将快照内容包装成官方支持版本
+
+---
+
+## TCD 视角下怎么读这个仓库
+
+如果你是按 TCD 的方式看代码，不建议一上来全量乱翻，建议按下面三条主线拆：
+
+### 1. Agent 主循环
+
+先看 Claude Code 如何把“用户输入 -> 模型响应 -> 工具调用 -> 权限确认 -> 再回到模型”串起来：
+
+- `src/main.tsx`
+- `src/query.ts`
+- `src/QueryEngine.ts`
+- `src/Tool.ts`
+- `src/tools.ts`
+
+这条线解决的是：
+
+- CLI 怎么进入主循环
+- 模型工具调用怎么调度
+- 流式输出怎么组织
+- 工具结果怎么回灌给模型
+
+### 2. 工具与权限系统
+
+再看它如何把“能做什么”和“允许做什么”分开：
+
+- `src/tools/`
+- `src/hooks/toolPermission/`
+- `src/components/permissions/`
+- `src/services/tools/`
+
+这条线最值得研究的是：
+
+- 每个工具的 schema 和执行逻辑如何定义
+- 权限弹窗与自动放行模式如何落地
+- Shell / 文件 / Web / MCP 工具如何统一抽象
+
+### 3. 扩展能力层
+
+最后看它如何变成一个可扩展平台，而不只是一个单体 CLI：
+
+- `src/skills/`
+- `src/plugins/`
+- `src/commands/`
+- `src/services/mcp/`
+- `src/services/lsp/`
+- `src/bridge/`
+- `src/remote/`
+
+这条线对应的是：
+
+- Skill 如何加载
+- Plugin 如何发现与安装
+- MCP 如何接入外部系统
+- IDE / Remote / Bridge 如何和 CLI 打通
+
+---
+
+## 目录结构速览
 
 ```text
 src/
-├── main.tsx                 # Entrypoint orchestration (Commander.js-based CLI path)
-├── commands.ts              # Command registry
-├── tools.ts                 # Tool registry
-├── Tool.ts                  # Tool type definitions
-├── QueryEngine.ts           # LLM query engine
-├── context.ts               # System/user context collection
-├── cost-tracker.ts          # Token cost tracking
+├── main.tsx                 # CLI 入口与初始化
+├── commands.ts              # 命令注册总表
+├── tools.ts                 # 工具注册总表
+├── Tool.ts                  # 工具抽象与类型
+├── QueryEngine.ts           # 模型调用与工具循环核心
+├── query.ts                 # 主查询/主回合编排
+├── context.ts               # 上下文收集
+├── cost-tracker.ts          # 成本统计
 │
-├── commands/                # Slash command implementations (~50)
-├── tools/                   # Agent tool implementations (~40)
-├── components/              # Ink UI components (~140)
-├── hooks/                   # React hooks
-├── services/                # External service integrations
-├── screens/                 # Full-screen UIs (Doctor, REPL, Resume)
-├── types/                   # TypeScript type definitions
-├── utils/                   # Utility functions
+├── commands/                # 用户命令
+├── tools/                   # 工具实现
+├── components/              # Ink UI 组件
+├── hooks/                   # React Hook
+├── services/                # 服务集成层
+├── screens/                 # 全屏界面
+├── types/                   # 类型定义
+├── utils/                   # 工具函数
 │
-├── bridge/                  # IDE and remote-control bridge
-├── coordinator/             # Multi-agent coordinator
-├── plugins/                 # Plugin system
-├── skills/                  # Skill system
-├── keybindings/             # Keybinding configuration
-├── vim/                     # Vim mode
-├── voice/                   # Voice input
-├── remote/                  # Remote sessions
-├── server/                  # Server mode
-├── memdir/                  # Persistent memory directory
-├── tasks/                   # Task management
-├── state/                   # State management
-├── migrations/              # Config migrations
-├── schemas/                 # Config schemas (Zod)
-├── entrypoints/             # Initialization logic
-├── ink/                     # Ink renderer wrapper
-├── buddy/                   # Companion sprite
-├── native-ts/               # Native TypeScript utilities
-├── outputStyles/            # Output styling
-├── query/                   # Query pipeline
-└── upstreamproxy/           # Proxy configuration
+├── bridge/                  # IDE / 桥接协议
+├── remote/                  # 远程会话
+├── coordinator/             # 多代理协调
+├── plugins/                 # 插件系统
+├── skills/                  # 技能系统
+├── server/                  # 服务端模式
+├── memdir/                  # 持久记忆目录
+├── tasks/                   # 任务系统
+├── state/                   # 状态管理
+├── migrations/              # 配置迁移
+├── schemas/                 # Zod Schema
+└── upstreamproxy/           # 代理配置
 ```
 
 ---
 
-## Architecture Summary
+## 重点模块
 
-### 1. Tool System (`src/tools/`)
+### 工具系统
 
-Every tool Claude Code can invoke is implemented as a self-contained module. Each tool defines its input schema, permission model, and execution logic.
+`src/tools/` 是 Claude Code 的核心资产之一。这里能直接看到一个成熟 Agent CLI 常见的工具模型：
 
-| Tool | Description |
-|---|---|
-| `BashTool` | Shell command execution |
-| `FileReadTool` | File reading (images, PDFs, notebooks) |
-| `FileWriteTool` | File creation / overwrite |
-| `FileEditTool` | Partial file modification (string replacement) |
-| `GlobTool` | File pattern matching search |
-| `GrepTool` | ripgrep-based content search |
-| `WebFetchTool` | Fetch URL content |
-| `WebSearchTool` | Web search |
-| `AgentTool` | Sub-agent spawning |
-| `SkillTool` | Skill execution |
-| `MCPTool` | MCP server tool invocation |
-| `LSPTool` | Language Server Protocol integration |
-| `NotebookEditTool` | Jupyter notebook editing |
-| `TaskCreateTool` / `TaskUpdateTool` | Task creation and management |
-| `SendMessageTool` | Inter-agent messaging |
-| `TeamCreateTool` / `TeamDeleteTool` | Team agent management |
-| `EnterPlanModeTool` / `ExitPlanModeTool` | Plan mode toggle |
-| `EnterWorktreeTool` / `ExitWorktreeTool` | Git worktree isolation |
-| `ToolSearchTool` | Deferred tool discovery |
-| `CronCreateTool` | Scheduled trigger creation |
-| `RemoteTriggerTool` | Remote trigger |
-| `SleepTool` | Proactive mode wait |
-| `SyntheticOutputTool` | Structured output generation |
+- `BashTool`
+- `FileReadTool`
+- `FileWriteTool`
+- `FileEditTool`
+- `GlobTool`
+- `GrepTool`
+- `WebFetchTool`
+- `WebSearchTool`
+- `AgentTool`
+- `SkillTool`
+- `MCPTool`
+- `LSPTool`
+- `TaskCreateTool`
+- `TaskUpdateTool`
 
-### 2. Command System (`src/commands/`)
+研究价值在于：
 
-User-facing slash commands invoked with `/` prefix.
+- 工具 schema 如何约束模型输出
+- 工具权限如何单独控制
+- UI、执行器、结果格式化如何分层
 
-| Command | Description |
-|---|---|
-| `/commit` | Create a git commit |
-| `/review` | Code review |
-| `/compact` | Context compression |
-| `/mcp` | MCP server management |
-| `/config` | Settings management |
-| `/doctor` | Environment diagnostics |
-| `/login` / `/logout` | Authentication |
-| `/memory` | Persistent memory management |
-| `/skills` | Skill management |
-| `/tasks` | Task management |
-| `/vim` | Vim mode toggle |
-| `/diff` | View changes |
-| `/cost` | Check usage cost |
-| `/theme` | Change theme |
-| `/context` | Context visualization |
-| `/pr_comments` | View PR comments |
-| `/resume` | Restore previous session |
-| `/share` | Share session |
-| `/desktop` | Desktop app handoff |
-| `/mobile` | Mobile app handoff |
+### 命令系统
 
-### 3. Service Layer (`src/services/`)
+`src/commands/` 负责 CLI 命令层，能看到它如何把交互命令做成可扩展体系：
 
-| Service | Description |
-|---|---|
-| `api/` | Anthropic API client, file API, bootstrap |
-| `mcp/` | Model Context Protocol server connection and management |
-| `oauth/` | OAuth 2.0 authentication flow |
-| `lsp/` | Language Server Protocol manager |
-| `analytics/` | GrowthBook-based feature flags and analytics |
-| `plugins/` | Plugin loader |
-| `compact/` | Conversation context compression |
-| `policyLimits/` | Organization policy limits |
-| `remoteManagedSettings/` | Remote managed settings |
-| `extractMemories/` | Automatic memory extraction |
-| `tokenEstimation.ts` | Token count estimation |
-| `teamMemorySync/` | Team memory synchronization |
+- `/review`
+- `/config`
+- `/doctor`
+- `/memory`
+- `/skills`
+- `/tasks`
+- `/mcp`
+- `/resume`
+- `/diff`
 
-### 4. Bridge System (`src/bridge/`)
+如果你在做自己的 AI CLI，这部分非常值得对照。
 
-A bidirectional communication layer connecting IDE extensions (VS Code, JetBrains) with the Claude Code CLI.
+### Skill / Plugin / MCP
 
-- `bridgeMain.ts` — Bridge main loop
-- `bridgeMessaging.ts` — Message protocol
-- `bridgePermissionCallbacks.ts` — Permission callbacks
-- `replBridge.ts` — REPL session bridge
-- `jwtUtils.ts` — JWT-based authentication
-- `sessionRunner.ts` — Session execution management
+这是 Claude Code 从“命令行工具”走向“平台”的关键：
 
-### 5. Permission System (`src/hooks/toolPermission/`)
+- `src/skills/`：技能加载、前置发现、动态激活
+- `src/plugins/`：插件装配
+- `src/services/mcp/`：MCP 连接、配置、认证、权限
 
-Checks permissions on every tool invocation. Either prompts the user for approval/denial or automatically resolves based on the configured permission mode (`default`, `plan`, `bypassPermissions`, `auto`, etc.).
+这一层很适合拿来回答两个问题：
 
-### 6. Feature Flags
-
-Dead code elimination via Bun's `bun:bundle` feature flags:
-
-```typescript
-import { feature } from 'bun:bundle'
-
-// Inactive code is completely stripped at build time
-const voiceCommand = feature('VOICE_MODE')
-  ? require('./commands/voice/index.js').default
-  : null
-```
-
-Notable flags: `PROACTIVE`, `KAIROS`, `BRIDGE_MODE`, `DAEMON`, `VOICE_MODE`, `AGENT_TRIGGERS`, `MONITOR_TOOL`
+1. Agent 平台怎么做可扩展性？
+2. 本地 Prompt 技能、插件、外部工具协议，怎么统一到一个 CLI 里？
 
 ---
 
-## Key Files in Detail
+## 建议阅读顺序
 
-### `QueryEngine.ts` (~46K lines)
+如果你第一次看这个仓库，建议按顺序读：
 
-The core engine for LLM API calls. Handles streaming responses, tool-call loops, thinking mode, retry logic, and token counting.
+1. `src/main.tsx`
+2. `src/query.ts`
+3. `src/QueryEngine.ts`
+4. `src/Tool.ts`
+5. `src/tools/BashTool/`
+6. `src/services/tools/`
+7. `src/hooks/toolPermission/`
+8. `src/skills/loadSkillsDir.ts`
+9. `src/services/mcp/`
+10. `src/bridge/`
 
-### `Tool.ts` (~29K lines)
-
-Defines base types and interfaces for all tools — input schemas, permission models, and progress state types.
-
-### `commands.ts` (~25K lines)
-
-Manages registration and execution of all slash commands. Uses conditional imports to load different command sets per environment.
-
-### `main.tsx`
-
-Commander.js-based CLI parser and React/Ink renderer initialization. At startup, it overlaps MDM settings, keychain prefetch, and GrowthBook initialization for faster boot.
-
----
-
-## Tech Stack
-
-| Category | Technology |
-|---|---|
-| Runtime | [Bun](https://bun.sh) |
-| Language | TypeScript (strict) |
-| Terminal UI | [React](https://react.dev) + [Ink](https://github.com/vadimdemedes/ink) |
-| CLI Parsing | [Commander.js](https://github.com/tj/commander.js) (extra-typings) |
-| Schema Validation | [Zod v4](https://zod.dev) |
-| Code Search | [ripgrep](https://github.com/BurntSushi/ripgrep) |
-| Protocols | [MCP SDK](https://modelcontextprotocol.io), LSP |
-| API | [Anthropic SDK](https://docs.anthropic.com) |
-| Telemetry | OpenTelemetry + gRPC |
-| Feature Flags | GrowthBook |
-| Auth | OAuth 2.0, JWT, macOS Keychain |
+这样能先抓住主干，再看扩展层，不容易迷路。
 
 ---
 
-## Notable Design Patterns
+## 这个仓库适合谁
 
-### Parallel Prefetch
-
-Startup time is optimized by prefetching MDM settings, keychain reads, and API preconnect in parallel before heavy module evaluation begins.
-
-```typescript
-// main.tsx — fired as side-effects before other imports
-startMdmRawRead()
-startKeychainPrefetch()
-```
-
-### Lazy Loading
-
-Heavy modules (OpenTelemetry, gRPC, analytics, and some feature-gated subsystems) are deferred via dynamic `import()` until actually needed.
-
-### Agent Swarms
-
-Sub-agents are spawned via `AgentTool`, with `coordinator/` handling multi-agent orchestration. `TeamCreateTool` enables team-level parallel work.
-
-### Skill System
-
-Reusable workflows defined in `skills/` are executed through `SkillTool`. Users can add custom skills.
-
-### Plugin Architecture
-
-Built-in and third-party plugins are loaded through the `plugins/` subsystem.
+- 想做 Agent CLI / Coding Agent 的工程师
+- 想研究 AI 工具调用与权限系统的安全研究者
+- 想研究终端 UI + Agent 交互设计的产品/前端工程师
+- 想复盘供应链泄露事件的安全从业者
+- 想学习大型 TypeScript CLI 项目组织方式的人
 
 ---
 
-## Research / Ownership Disclaimer
+## 研究重点建议
 
-- This repository is an **educational and defensive security research archive** maintained by a university student.
-- It exists to study source exposure, packaging failures, and the architecture of modern agentic CLI systems.
-- The original Claude Code source remains the property of **Anthropic**.
-- This repository is **not affiliated with, endorsed by, or maintained by Anthropic**.
+### 1. 供应链安全
+
+关注：
+
+- source map 暴露
+- 构建产物是否带出源码引用
+- 静态资源、R2、CDN 与 npm 包之间的边界
+
+### 2. Agent 架构
+
+关注：
+
+- 模型循环
+- 工具协议
+- 权限判定
+- 技能与插件装配
+- 远程会话与 IDE 桥接
+
+### 3. 工程实现
+
+关注：
+
+- 大型 TypeScript CLI 如何拆模块
+- React + Ink 在终端里的组织方式
+- 状态、命令、工具、权限、服务之间的边界
+
+---
+
+## 免责声明
+
+本仓库仅用于研究、教学与防御性分析。
+
+- 不代表官方立场
+- 不提供官方支持
+- 不保证与任何正式发行版本完全一致
+- 不应被当作官方开源项目引用
+
+如果原始权利方提出合理要求，仓库维护方应按实际情况处理。
+
+---
+
+## 一句话总结
+
+这不是“Claude Code 官方源码”，而是一份极有研究价值的真实 Agent CLI 源码快照；如果你关心 AI 编程工具、终端 Agent、安全供应链和可扩展架构，这个仓库值得细读。
